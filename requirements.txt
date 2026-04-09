@@ -1,7 +1,16 @@
-TTS==0.22.0
-fastapi==0.115.0
-uvicorn==0.30.0
-yt-dlp==2025.1.15
-pydub==0.25.1
-ollama==0.3.3
-python-multipart==0.0.9
+# ── Core AI / Voice ──────────────────────────────────────────────────────────
+# Pin torch to 2.5.1 — last version before torchcodec replaces torchaudio.
+# Do NOT upgrade torch without testing the full XTTS v2 synthesis pipeline.
+torch==2.5.1
+torchaudio==2.5.1
+coqui-tts==0.27.5
+coqui-tts[codec]
+
+# ── Audio Processing ─────────────────────────────────────────────────────────
+yt-dlp>=2025.1.15
+pydub>=0.25.1
+
+# ── Web Backend ──────────────────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Voice Scam — Educational Demo</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #161616;
+      --surface2: #1e1e1e;
+      --border:   rgba(255,255,255,0.08);
+      --text:     #e8e8e8;
+      --muted:    #888;
+      --faint:    #444;
+      --red:      #ff4444;
+      --red-dim:  rgba(255,68,68,0.12);
+      --green:    #34c759;
+      --blue:     #0a84ff;
+      --yellow:   #ffd60a;
+      --radius:   12px;
+      --font:     'General Sans', -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Warning banner ── */
+    .warning-banner {
+      background: var(--red-dim);
+      border-bottom: 1px solid rgba(255,68,68,0.25);
+      padding: 10px 24px;
+      font-size: 13px;
+      color: #ff8888;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Layout ── */
+    .app { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 40px); }
+
+    /* ── Sidebar: controls ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; font-weight: 600;
+    }
+    .logo svg { color: var(--red); }
+
+    .step-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .step-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--red-dim); border: 1px solid var(--red);
+      color: var(--red); font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-title { font-size: 13px; font-weight: 600; color: var(--text); }
+
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; }
+    input, select {
+      width: 100%; background: #111; border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 12px;
+      color: var(--text); font-family: var(--font); font-size: 13px;
+      outline: none; transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: rgba(255,68,68,0.5); }
+    input + label { margin-top: 10px; }
+
+    .btn {
+      width: 100%; padding: 10px; border-radius: 8px;
+      font-family: var(--font); font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; transition: all 0.15s;
+      margin-top: 10px;
+    }
+    .btn-primary {
+      background: var(--red); color: white;
+    }
+    .btn-primary:hover { background: #ff2222; transform: translateY(-1px); }
+    .btn-primary:disabled { background: #444; color: #666; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+    }
+
+    /* ── Status indicator ── */
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--faint); display: inline-block; margin-right: 6px;
+    }
+    .status-dot.active { background: var(--yellow); animation: pulse 1s infinite; }
+    .status-dot.done   { background: var(--green); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Main area ── */
+    .main { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+
+    /* ── Attack pipeline visual ── */
+    .pipeline {
+      display: flex; align-items: center; gap: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 28px;
+      overflow-x: auto;
+    }
+    .pipe-step {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; min-width: 110px; text-align: center;
+    }
+    .pipe-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      border: 1px solid var(--border); display: flex; align-items: center;
+      justify-content: center; font-size: 20px;
+      background: var(--surface2); transition: all 0.3s;
+    }
+    .pipe-icon.active { border-color: var(--yellow); background: rgba(255,214,10,0.1); }
+    .pipe-icon.done   { border-color: var(--green);  background: rgba(52,199,89,0.1); }
+    .pipe-label { font-size: 11px; color: var(--muted); }
+    .pipe-sub   { font-size: 10px; color: var(--faint); }
+    .pipe-arrow { color: var(--faint); font-size: 20px; padding: 0 8px; flex-shrink: 0; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      text-align: center;
+    }
+    .stat-value { font-size: 26px; font-weight: 600; color: var(--red); font-variant-numeric: tabular-nums; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ── iPhone call UI ── */
+    .call-area {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    .iphone {
+      background: #1c1c1e;
+      border-radius: 44px;
+      border: 2px solid #3a3a3c;
+      padding: 20px;
+      max-width: 280px;
+      margin: 0 auto;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .iphone-notch {
+      width: 120px; height: 28px;
+      background: #1c1c1e; border: 2px solid #3a3a3c;
+      border-radius: 20px; margin: -20px auto 16px;
+      position: relative; z-index: 2;
+    }
+    .call-screen {
+      text-align: center; padding: 20px 10px;
+    }
+    .call-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, #636366, #48484a);
+      margin: 0 auto 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+    .call-name { font-size: 22px; font-weight: 600; color: white; }
+    .call-status {
+      font-size: 14px; color: #8e8e93; margin-top: 4px; margin-bottom: 24px;
+    }
+    .call-timer {
+      font-size: 18px; font-weight: 500; color: var(--green);
+      font-variant-numeric: tabular-nums; margin-bottom: 20px;
+    }
+    .call-buttons {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px;
+    }
+    .call-btn {
+      width: 60px; height: 60px; border-radius: 50%;
+      background: #2c2c2e; border: none;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto; font-size: 22px; cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .call-btn:active { transform: scale(0.92); }
+    .call-btn.green { background: var(--green); }
+    .call-btn.red   { background: var(--red); }
+    .call-signal { display: flex; gap: 3px; justify-content: center; margin-bottom: 12px; }
+    .signal-bar {
+      width: 3px; border-radius: 2px; background: var(--green);
+    }
+
+    /* ── Transcript ── */
+    .transcript-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .transcript-header { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .transcript-body {
+      flex: 1; min-height: 180px; font-size: 14px; line-height: 1.7;
+      color: var(--text); overflow-y: auto;
+    }
+    .word { display: inline; transition: color 0.1s; }
+    .word.spoken { color: var(--green); }
+    .word.current { color: var(--yellow); font-weight: 600; }
+    .pause-marker {
+      display: inline-block; background: rgba(255,214,10,0.15);
+      border: 1px solid rgba(255,214,10,0.3);
+      border-radius: 4px; padding: 1px 6px;
+      font-size: 11px; color: var(--yellow); margin: 0 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Audio player ── */
+    .audio-player {
+      background: var(--surface2); border-radius: 10px;
+      padding: 14px; display: flex; align-items: center; gap: 12px;
+    }
+    .play-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--red); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 16px; flex-shrink: 0;
+    }
+    .waveform {
+      flex: 1; height: 36px; display: flex; align-items: center; gap: 1.5px;
+    }
+    .wave-bar {
+      flex: 1; border-radius: 2px; background: var(--faint);
+      transition: background 0.1s;
+    }
+    .wave-bar.played { background: var(--red); }
+
+    /* ── Log console ── */
+    .console {
+      background: #0a0a0a; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px; max-height: 160px; overflow-y: auto;
+    }
+    .log-line { color: var(--muted); margin-bottom: 4px; }
+    .log-line.success { color: var(--green); }
+    .log-line.warning { color: var(--yellow); }
+    .log-line.error   { color: var(--red); }
+    .log-line .ts     { color: var(--faint); margin-right: 8px; }
+    .log-line .tag    { color: var(--blue); margin-right: 6px; }
+
+    /* ── Manipulation tactics breakdown ── */
+    .tactics-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .tactic-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; font-size: 12px;
+    }
+    .tactic-name { color: var(--red); font-weight: 600; margin-bottom: 4px; }
+    .tactic-desc { color: var(--muted); line-height: 1.5; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .call-area { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="warning-banner">
+  ⚠️ EDUCATIONAL DEMONSTRATION — Created to help policymakers understand AI-enabled elder fraud. No real scam calls are placed.
+</div>
+
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+
+    <!-- Logo -->
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.66A2 2 0 012 .18h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
+      </svg>
+      Grandparent Scam Simulator
+    </div>
+
+    <!-- Step 1: Source Audio -->
+    <div class="step-card">
+      <div class="step-header">
+        <span class="step-num">1</span>
+        <span class="step-title">Extract Voice Sample</span>
+        <span class="status-dot" id="dot1"></span>
+      </div>
+      <label>YouTube URL (any public video with clear speech)</label>
+      <input type="url" id="ytUrl" placeholder="https://www.youtube.com/watch?v=...">
+      <label style="margin-top:10px">Start second <span style="color:var(--faint)">(skip intros)</span></label>
+      <input type="number" id="startSec" value="5" min="0">
+      <label style="margin-top:10px">Duration (seconds)</label>
+      <input type="number" id="duration" value="15" min="6" max="30">
+      <button class="btn btn-primary" onclick="extractAudio()" id="btn1">Extract Audio</button>
+    </div>
+
+    <!-- Step 2: Script -->
+    <div class="step-card">
+      <div class="step-header">
+        <span class="step-num">2</span>
+        <span class="step-title">Generate Scam Script</span>
+        <span class="status-dot" id="dot2"></span>
+      </div>
+      <label>Victim's name (the grandparent)</label>
+      <input type="text" id="victimName" value="Margaret">
+      <label>Grandchild's name</label>
+      <input type="text" id="gcName" value="Tommy">
+      <label>Scam scenario</label>
+      <select id="scamType">
+        <option value="car_accident">Car accident — needs gift cards</option>
+        <option value="arrested">Arrested — needs bail wire</option>
+        <option value="hospital">Hospital abroad — needs wire</option>
+      </select>
+      <button class="btn btn-primary" onclick="generateScript()" id="btn2" disabled>Generate Script</button>
+    </div>
+
+    <!-- Step 3: Synthesize -->
+    <div class="step-card">
+      <div class="step-header">
+        <span class="step-num">3</span>
+        <span class="step-title">Clone Voice</span>
+        <span class="status-dot" id="dot3"></span>
+      </div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.6">
+        XTTS v2 will synthesize the scam script in the extracted voice.
+        CPU: ~2–5 min. GPU: ~15 sec.
+      </p>
+      <button class="btn btn-primary" onclick="synthesize()" id="btn3" disabled>Synthesize Voice</button>
+    </div>
+
+    <!-- Source stats -->
+    <div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">SOURCE AUDIO</div>
+      <audio id="refAudio" controls style="width:100%;height:30px;display:none"></audio>
+      <div id="refLabel" style="font-size:12px;color:var(--faint)">No audio loaded yet</div>
+    </div>
+
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- Attack pipeline diagram -->
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-icon" id="pipe0">📹</div>
+        <div class="pipe-label">YouTube Video</div>
+        <div class="pipe-sub">Any public source</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon" id="pipe1">🔊</div>
+        <div class="pipe-label">yt-dlp Extract</div>
+        <div class="pipe-sub" id="pipeRefSec">0s of audio</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon" id="pipe2">🤖</div>
+        <div class="pipe-label">LLM Script</div>
+        <div class="pipe-sub" id="pipeWords">0 words</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon" id="pipe3">🎙️</div>
+        <div class="pipe-label">XTTS v2 Clone</div>
+        <div class="pipe-sub" id="pipeGenTime">0s gen time</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon" id="pipe4">☎️</div>
+        <div class="pipe-label">Scam Call</div>
+        <div class="pipe-sub" id="pipeCallLen">0s audio</div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-value" id="statSrc">0s</div>
+        <div class="stat-label">Source audio needed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statGen">—</div>
+        <div class="stat-label">Generation time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statCost">$0.00</div>
+        <div class="stat-label">Cost (fully local)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statOutput">0s</div>
+        <div class="stat-label">Scam call duration</div>
+      </div>
+    </div>
+
+    <!-- Call UI + Transcript -->
+    <div class="call-area">
+
+      <!-- iPhone mockup -->
+      <div>
+        <div class="iphone">
+          <div class="iphone-notch"></div>
+          <div class="call-screen">
+            <div style="font-size:11px;color:#8e8e93;text-align:right;margin-bottom:8px">
+              <span id="carrier">No Service</span>
+              &nbsp;&nbsp;
+              <span id="battIcon">🔋</span>
+            </div>
+            <div class="call-signal">
+              <div class="signal-bar" style="height:8px"></div>
+              <div class="signal-bar" style="height:12px"></div>
+              <div class="signal-bar" style="height:16px"></div>
+              <div class="signal-bar" style="height:22px"></div>
+            </div>
+            <div class="call-avatar">👴</div>
+            <div class="call-name" id="callName">Margaret</div>
+            <div class="call-status" id="callStatus">Waiting for call…</div>
+            <div class="call-timer" id="callTimer" style="display:none">0:00</div>
+            <div class="call-buttons">
+              <div>
+                <button class="call-btn" onclick="toggleMute()">🔇</button>
+                <div style="font-size:10px;color:#8e8e93;text-align:center;margin-top:6px">mute</div>
+              </div>
+              <div>
+                <button class="call-btn green" id="playBtn" onclick="playCall()">▶</button>
+                <div style="font-size:10px;color:#8e8e93;text-align:center;margin-top:6px">play</div>
+              </div>
+              <div>
+                <button class="call-btn red" onclick="endCall()">📵</button>
+                <div style="font-size:10px;color:#8e8e93;text-align:center;margin-top:6px">end</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio element + waveform -->
+        <div class="audio-player" style="margin-top:16px;max-width:280px;margin-left:auto;margin-right:auto">
+          <audio id="scamAudio"></audio>
+          <div class="play-btn" onclick="playCall()">▶</div>
+          <div class="waveform" id="waveform">
+            <!-- Generated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Transcript panel -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="transcript-panel">
+          <div class="transcript-header">TRANSCRIPT — REAL-TIME ANALYSIS</div>
+          <div class="transcript-body" id="transcriptBody">
+            <span style="color:var(--faint)">Script will appear here after generation…</span>
+          </div>
+        </div>
+
+        <!-- Manipulation tactics -->
+        <div style="font-size:12px;font-weight:600;color:var(--muted)">MANIPULATION TACTICS DETECTED</div>
+        <div class="tactics-grid" id="tacticsGrid">
+          <div class="tactic-card">
+            <div class="tactic-name">Urgency</div>
+            <div class="tactic-desc">Artificial time pressure prevents rational thinking</div>
+          </div>
+          <div class="tactic-card">
+            <div class="tactic-name">Isolation</div>
+            <div class="tactic-desc">"Don't tell Mom/Dad" — removes protective advisors</div>
+          </div>
+          <div class="tactic-card">
+            <div class="tactic-name">Authority</div>
+            <div class="tactic-desc">Fake lawyers/officers add false legitimacy</div>
+          </div>
+          <div class="tactic-card">
+            <div class="tactic-name">Voice Trust</div>
+            <div class="tactic-desc">Familiar voice bypasses skepticism entirely</div>
+          </div>
+          <div class="tactic-card">
+            <div class="tactic-name">Emotional Hook</div>
+            <div class="tactic-desc">Grandparent instinct overrides logic</div>
+          </div>
+          <div class="tactic-card">
+            <div class="tactic-name">Untraceable</div>
+            <div class="tactic-desc">Gift cards / wire = no chargeback possible</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Console log -->
+    <div class="console" id="console">
+      <div class="log-line"><span class="ts">[00:00]</span><span class="tag">[SYSTEM]</span>Grandparent Scam Simulator loaded. Ready.</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  let audioId = null;
+  let generatedScript = "";
+  let callInterval = null;
+  let callSeconds = 0;
+  const API = "";  // same origin
+
+  // ── Logging ──────────────────────────────────────────────────────
+  function log(msg, type="") {
+    const c = document.getElementById("console");
+    const now = new Date();
+    const ts = `${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+    const d = document.createElement("div");
+    d.className = `log-line ${type}`;
+    d.innerHTML = `<span class="ts">[${ts}]</span>${msg}`;
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
+  }
+
+  // ── Pipeline state ───────────────────────────────────────────────
+  function setPipe(i, state) {
+    const el = document.getElementById(`pipe${i}`);
+    if (el) { el.className = `pipe-icon ${state}`; }
+  }
+  function setDot(i, state) {
+    const el = document.getElementById(`dot${i}`);
+    if (el) el.className = `status-dot ${state}`;
+  }
+
+  // ── Step 1: Extract Audio ────────────────────────────────────────
+  async function extractAudio() {
+    const url = document.getElementById("ytUrl").value.trim();
+    if (!url) { log("<span class='tag'>[ERROR]</span>Please enter a YouTube URL", "error"); return; }
+
+    document.getElementById("btn1").disabled = true;
+    setDot(1, "active"); setPipe(1, "active");
+    log(`<span class='tag'>[yt-dlp]</span>Extracting audio from: ${url.substring(0,50)}…`);
+
+    try {
+      const res = await fetch(`${API}/api/extract`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          url, 
+          start_seconds: +document.getElementById("startSec").value,
+          duration: +document.getElementById("duration").value
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      audioId = data.audio_id;
+
+      const dur = document.getElementById("duration").value;
+      document.getElementById("pipeRefSec").textContent = `${dur}s extracted`;
+      document.getElementById("statSrc").textContent = `${dur}s`;
+      document.getElementById("refLabel").textContent = `"${data.title}"`;
+      const refAudio = document.getElementById("refAudio");
+      refAudio.src = data.ref_url;
+      refAudio.style.display = "block";
+
+      setPipe(0, "done"); setPipe(1, "done");
+      setDot(1, "done");
+      document.getElementById("btn2").disabled = false;
+      log(`<span class='tag'>[yt-dlp]</span>Extracted "${data.title}" — ${dur}s reference clip ready`, "success");
+    } catch(e) {
+      log(`<span class='tag'>[ERROR]</span>${e.message}`, "error");
+      setDot(1, ""); setPipe(1, "");
+      document.getElementById("btn1").disabled = false;
+    }
+  }
+
+  // ── Step 2: Generate Script ──────────────────────────────────────
+  async function generateScript() {
+    const victimName = document.getElementById("victimName").value;
+    const gcName     = document.getElementById("gcName").value;
+    const scamType   = document.getElementById("scamType").value;
+
+    document.getElementById("btn2").disabled = true;
+    document.getElementById("callName").textContent = victimName;
+    setDot(2, "active"); setPipe(2, "active");
+    log(`<span class='tag'>[LLM]</span>Generating ${scamType} script for ${gcName} → ${victimName}…`);
+
+    try {
+      const res = await fetch(`${API}/api/generate-script`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ victim_name: victimName, grandchild_name: gcName, scam_type: scamType })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      generatedScript = data.tts_script;
+
+      // Render transcript with word spans
+      const tb = document.getElementById("transcriptBody");
+      tb.innerHTML = "";
+      data.display_script.split(/\s+/).forEach((word, i) => {
+        if (word === "[PAUSE]") {
+          const m = document.createElement("span");
+          m.className = "pause-marker"; m.textContent = "⏸ pause";
+          tb.appendChild(m); tb.appendChild(document.createTextNode(" "));
+        } else {
+          const s = document.createElement("span");
+          s.className = "word"; s.id = `w${i}`; s.textContent = word + " ";
+          tb.appendChild(s);
+        }
+      });
+
+      document.getElementById("pipeWords").textContent = `${data.word_count} words`;
+      setPipe(2, "done"); setDot(2, "done");
+      document.getElementById("btn3").disabled = false;
+      log(`<span class='tag'>[LLM]</span>Script generated — ${data.word_count} words ≈ ${data.estimated_seconds}s call`, "success");
+    } catch(e) {
+      log(`<span class='tag'>[ERROR]</span>${e.message}`, "error");
+      setDot(2, ""); setPipe(2, "");
+      document.getElementById("btn2").disabled = false;
+    }
+  }
+
+  // ── Step 3: Synthesize ───────────────────────────────────────────
+  async function synthesize() {
+    if (!audioId || !generatedScript) return;
+    document.getElementById("btn3").disabled = true;
+    setDot(3, "active"); setPipe(3, "active");
+    log(`<span class='tag'>[XTTS]</span>Cloning voice with XTTS v2… (this takes 2-5min on CPU, ~15s on GPU)`);
+    log(`<span class='tag'>[XTTS]</span>Reference: ${audioId}_ref.wav`, "warning");
+
+    const start = Date.now();
+    try {
+      const res = await fetch(`${API}/api/synthesize`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ audio_id: audioId, script: generatedScript })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      document.getElementById("statGen").textContent = `${elapsed}s`;
+      document.getElementById("pipeGenTime").textContent = `${elapsed}s`;
+
+      // Load into audio element
+      const audio = document.getElementById("scamAudio");
+      audio.src = data.audio_url;
+      audio.onloadedmetadata = () => {
+        const dur = Math.round(audio.duration);
+        document.getElementById("statOutput").textContent = `${dur}s`;
+        document.getElementById("pipeCallLen").textContent = `${dur}s`;
+      };
+
+      // Generate fake waveform bars
+      buildWaveform();
+
+      setPipe(3, "done"); setPipe(4, "done");
+      setDot(3, "done");
+      document.getElementById("callStatus").textContent = "Incoming call…";
+      log(`<span class='tag'>[XTTS]</span>Voice synthesis complete in ${elapsed}s — ready to play`, "success");
+      log(`<span class='tag'>[COST]</span>Total cost: $0.00  |  Infrastructure: local  |  API keys needed: none`, "warning");
+    } catch(e) {
+      log(`<span class='tag'>[ERROR]</span>${e.message}`, "error");
+      setDot(3, ""); setPipe(3, "");
+      document.getElementById("btn3").disabled = false;
+    }
+  }
+
+  // ── Playback ─────────────────────────────────────────────────────
+  function playCall() {
+    const audio = document.getElementById("scamAudio");
+    if (!audio.src) { log(`<span class='tag'>[WARN]</span>No audio ready. Complete all steps first.`, "warning"); return; }
+
+    audio.play();
+    document.getElementById("callStatus").textContent = "Active call";
+    document.getElementById("callTimer").style.display = "block";
+    callSeconds = 0;
+    clearInterval(callInterval);
+    callInterval = setInterval(() => {
+      callSeconds++;
+      const m = Math.floor(callSeconds / 60);
+      const s = callSeconds % 60;
+      document.getElementById("callTimer").textContent = `${m}:${String(s).padStart(2,"0")}`;
+    }, 1000);
+
+    // Animate waveform
+    const bars = document.querySelectorAll(".wave-bar");
+    audio.ontimeupdate = () => {
+      const pct = audio.currentTime / audio.duration;
+      bars.forEach((b, i) => {
+        b.classList.toggle("played", i / bars.length < pct);
+      });
+      // Scroll and highlight transcript words
+      const words = document.querySelectorAll(".word");
+      const idx = Math.floor(pct * words.length);
+      words.forEach((w, i) => {
+        w.className = `word ${i < idx ? "spoken" : i === idx ? "current" : ""}`;
+      });
+    };
+    audio.onended = () => {
+      clearInterval(callInterval);
+      document.getElementById("callStatus").textContent = "Call ended";
+      log(`<span class='tag'>[CALL]</span>Scam call playback complete`, "success");
+    };
+    log(`<span class='tag'>[CALL]</span>Playing cloned voice scam call…`);
+  }
+
+  function endCall() {
+    const audio = document.getElementById("scamAudio");
+    audio.pause(); audio.currentTime = 0;
+    clearInterval(callInterval);
+    document.getElementById("callStatus").textContent = "Call ended";
+    document.getElementById("callTimer").textContent = "0:00";
+  }
+
+  function toggleMute() {
+    const a = document.getElementById("scamAudio");
+    a.muted = !a.muted;
+    log(`<span class='tag'>[CALL]</span>Audio ${a.muted ? "muted" : "unmuted"}`);
+  }
+
+  function buildWaveform() {
+    const wf = document.getElementById("waveform");
+    wf.innerHTML = "";
+    for (let i = 0; i < 60; i++) {
+      const b = document.createElement("div");
+      b.className = "wave-bar";
+      const h = 8 + Math.random() * 24;
+      b.style.height = h + "px";
+      wf.appendChild(b);
+    }
+  }
+
+  // Init waveform placeholder
+  buildWaveform();
+</script>
+
+</body>
+</html>
